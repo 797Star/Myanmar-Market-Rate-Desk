@@ -1,0 +1,8 @@
+{
+  "name": "Myanmar Market Monitor",
+  "description": "Daily morning and evening tracking of Myanmar gold prices, foreign exchange rates (USD, THB, EUR, SGD, MYR), rice, cooking oil, and fuel with official vs open market comparisons, AI synthesis, and calculators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

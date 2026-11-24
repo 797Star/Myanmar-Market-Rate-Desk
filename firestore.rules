@@ -1,0 +1,282 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Global Helpers
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function userExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'preferredSession', 'preferredTheme', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'preferredSession', 'preferredTheme', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.preferredSession in ['morning', 'evening']
+        && data.preferredTheme in ['light', 'dark']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCustomMarketRate(data, userId) {
+      return data.keys().hasAll(['userId', 'assetType', 'assetId', 'assetName', 'customRate', 'session', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'assetType', 'assetId', 'assetName', 'customRate', 'session', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId == userId && isValidId(data.userId)
+        && data.assetType in ['gold', 'currency', 'commodity']
+        && data.assetId is string && data.assetId.size() >= 1 && data.assetId.size() <= 64
+        && data.assetName is string && data.assetName.size() >= 1 && data.assetName.size() <= 160
+        && (data.customRate is int || data.customRate is float) && data.customRate > 0
+        && data.session in ['morning', 'evening']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPriceAlertRule(data, userId) {
+      return data.keys().hasAll(['userId', 'itemKey', 'itemName', 'targetHigh', 'targetLow', 'alertType', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'itemKey', 'itemName', 'targetHigh', 'targetLow', 'alertType', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId == userId && isValidId(data.userId)
+        && data.itemKey is string && data.itemKey.size() >= 1 && data.itemKey.size() <= 64
+        && data.itemName is string && data.itemName.size() >= 1 && data.itemName.size() <= 160
+        && (data.targetHigh is int || data.targetHigh is float) && data.targetHigh >= 0
+        && (data.targetLow is int || data.targetLow is float) && data.targetLow >= 0
+        && data.alertType in ['above', 'below']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBasketQuantity(data, userId) {
+      return data.keys().hasAll(['userId', 'itemId', 'quantity', 'familySize', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'itemId', 'quantity', 'familySize', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId == userId && isValidId(data.userId)
+        && data.itemId is string && data.itemId.size() >= 1 && data.itemId.size() <= 64
+        && (data.quantity is int || data.quantity is float) && data.quantity >= 0 && data.quantity <= 10000
+        && data.familySize is int && data.familySize >= 1 && data.familySize <= 50
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSavedDigestRecord(data, userId) {
+      return data.keys().hasAll(['userId', 'date', 'session', 'headlineMm', 'headlineEn', 'spreadAnalysisMm', 'marketSentiment', 'keyPointsMm', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'date', 'session', 'headlineMm', 'headlineEn', 'spreadAnalysisMm', 'marketSentiment', 'keyPointsMm', 'workspaceUrl', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId == userId && isValidId(data.userId)
+        && data.date is string && data.date.size() >= 1 && data.date.size() <= 80
+        && data.session in ['morning', 'evening']
+        && data.headlineMm is string && data.headlineMm.size() >= 1 && data.headlineMm.size() <= 400
+        && data.headlineEn is string && data.headlineEn.size() >= 1 && data.headlineEn.size() <= 400
+        && data.spreadAnalysisMm is string && data.spreadAnalysisMm.size() >= 1 && data.spreadAnalysisMm.size() <= 1000
+        && data.marketSentiment in ['Volatile', 'Stable', 'Climbing', 'Subdued']
+        && data.keyPointsMm is list && data.keyPointsMm.size() >= 1 && data.keyPointsMm.size() <= 8 && data.keyPointsMm[0] is string && data.keyPointsMm[0].size() <= 500
+        && (!('workspaceUrl' in data) || (data.workspaceUrl is string && data.workspaceUrl.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAiUsageLedger(data, userId, dateKey) {
+      return data.keys().hasAll(['userId', 'dateKey', 'digestCalls', 'searchCalls', 'lastActionType', 'lastModelUsed', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'dateKey', 'digestCalls', 'searchCalls', 'lastActionType', 'lastModelUsed', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId == userId && isValidId(data.userId)
+        && data.dateKey is string && data.dateKey == dateKey && data.dateKey.size() == 10 && data.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.digestCalls is int && data.digestCalls >= 0 && data.digestCalls <= 100
+        && data.searchCalls is int && data.searchCalls >= 0 && data.searchCalls <= 100
+        && data.lastActionType in ['digest', 'search_grounding', 'market_sync', 'shops_sync', 'news_refresh']
+        && data.lastModelUsed is string && data.lastModelUsed.size() >= 1 && data.lastModelUsed.size() <= 64
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTownshipAssetBounds(assetType, assetId, rate) {
+      return (rate is int || rate is float) && rate > 0 && (
+        (assetType == 'currency' && (
+          (assetId == 'USD' && rate >= 1500 && rate <= 25000) ||
+          (assetId == 'THB' && rate >= 40 && rate <= 600) ||
+          (assetId == 'SGD' && rate >= 1000 && rate <= 15000) ||
+          (assetId == 'EUR' && rate >= 1500 && rate <= 25000) ||
+          (assetId == 'MYR' && rate >= 300 && rate <= 4500) ||
+          (assetId == 'CNY' && rate >= 200 && rate <= 2500) ||
+          (assetId == 'JPY' && rate >= 8 && rate <= 2000)
+        )) ||
+        (assetType == 'gold' && (
+          (assetId == 'gold-24k' && rate >= 2000000 && rate <= 50000000) ||
+          (assetId == 'gold-15pe' && rate >= 1500000 && rate <= 45000000) ||
+          (assetId == 'gold-ygea-ref' && rate >= 1500000 && rate <= 30000000) ||
+          (assetId == 'gold-world-spot' && rate >= 1200 && rate <= 12000)
+        )) ||
+        (assetType == 'commodity' && rate >= 500 && rate <= 1000000)
+      );
+    }
+
+    function isValidTownshipMarketReport(data, reportId) {
+      return data.keys().hasAll(['userId', 'reporterLabel', 'township', 'assetType', 'assetId', 'reportedRate', 'session', 'parityCheckStatus', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'reporterLabel', 'township', 'assetType', 'assetId', 'reportedRate', 'session', 'parityCheckStatus', 'createdAt', 'updatedAt'])
+        && data.userId is string && isValidId(data.userId)
+        && reportId == data.userId + '_' + data.assetType + '_' + data.assetId
+        && data.reporterLabel is string && data.reporterLabel.size() >= 1 && data.reporterLabel.size() <= 60
+        && data.township is string && data.township.size() >= 1 && data.township.size() <= 80
+        && data.assetType in ['gold', 'currency', 'commodity']
+        && data.assetId is string && data.assetId.size() >= 1 && data.assetId.size() <= 64
+        && isValidTownshipAssetBounds(data.assetType, data.assetId, data.reportedRate)
+        && data.session in ['morning', 'evening']
+        && data.parityCheckStatus in ['aligned', 'premium', 'flagged']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // 4. Collection Rules
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow create: if isValidId(userId) && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'preferredSession', 'preferredTheme', 'updatedAt']);
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      // Subcollection: Custom Market Rates
+      match /customRates/{rateId} {
+        allow get: if isValidId(userId) && isValidId(rateId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.userId == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(rateId) && isOwner(userId)
+          && isValidCustomMarketRate(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && userExists(userId);
+        allow update: if isValidId(userId) && isValidId(rateId) && isOwner(userId)
+          && isValidCustomMarketRate(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().assetId == existing().assetId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['customRate', 'session', 'assetName', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(rateId) && isOwner(userId);
+      }
+
+      // Subcollection: Price Alert Rules
+      match /priceAlerts/{alertId} {
+        allow get: if isValidId(userId) && isValidId(alertId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.userId == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(alertId) && isOwner(userId)
+          && isValidPriceAlertRule(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && userExists(userId);
+        allow update: if isValidId(userId) && isValidId(alertId) && isOwner(userId)
+          && isValidPriceAlertRule(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['targetHigh', 'targetLow', 'alertType', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(alertId) && isOwner(userId);
+      }
+
+      // Subcollection: Household Basket Quantities
+      match /basketQuantities/{itemId} {
+        allow get: if isValidId(userId) && isValidId(itemId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.userId == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(itemId) && isOwner(userId)
+          && isValidBasketQuantity(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && userExists(userId);
+        allow update: if isValidId(userId) && isValidId(itemId) && isOwner(userId)
+          && isValidBasketQuantity(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().itemId == existing().itemId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['quantity', 'familySize', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(itemId) && isOwner(userId);
+      }
+
+      // Subcollection: Saved Digests & Workspace Export History
+      match /savedDigests/{digestId} {
+        allow get: if isValidId(userId) && isValidId(digestId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.userId == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(digestId) && isOwner(userId)
+          && isValidSavedDigestRecord(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && userExists(userId);
+        allow update: if isValidId(userId) && isValidId(digestId) && isOwner(userId)
+          && isValidSavedDigestRecord(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['workspaceUrl', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(digestId) && isOwner(userId);
+      }
+
+      // Subcollection: Daily AI & Search Grounding Quota Usage Ledger
+      match /aiUsage/{dateKey} {
+        allow get: if isValidId(userId) && isValidId(dateKey) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId) && resource.data.userId == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(dateKey) && isOwner(userId)
+          && isValidAiUsageLedger(incoming(), userId, dateKey)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && userExists(userId);
+        allow update: if isValidId(userId) && isValidId(dateKey) && isOwner(userId)
+          && isValidAiUsageLedger(incoming(), userId, dateKey)
+          && incoming().userId == existing().userId
+          && incoming().dateKey == existing().dateKey
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['digestCalls', 'searchCalls', 'lastActionType', 'lastModelUsed', 'updatedAt']);
+        allow delete: if isValidId(userId) && isValidId(dateKey) && isOwner(userId);
+      }
+    }
+
+    // Shared Signed-In Community Township Market Consensus Reports (Zero PII)
+    match /townshipReports/{reportId} {
+      allow get: if isValidId(reportId) && isSignedIn() && existing().createdAt > timestamp.date(1970, 1, 1);
+      allow list: if isSignedIn() && existing().createdAt > timestamp.date(1970, 1, 1) && request.query.limit <= 60;
+      allow create: if isValidId(reportId)
+        && isSignedIn()
+        && isValidTownshipMarketReport(incoming(), reportId)
+        && isOwner(incoming().userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && userExists(incoming().userId);
+      allow update: if isValidId(reportId)
+        && isSignedIn()
+        && isValidTownshipMarketReport(incoming(), reportId)
+        && isOwner(existing().userId)
+        && incoming().userId == existing().userId
+        && incoming().assetType == existing().assetType
+        && incoming().assetId == existing().assetId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['reporterLabel', 'township', 'reportedRate', 'session', 'parityCheckStatus', 'updatedAt']);
+      allow delete: if isValidId(reportId) && isOwner(existing().userId);
+    }
+  }
+}

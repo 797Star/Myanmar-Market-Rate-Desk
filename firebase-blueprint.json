@@ -1,0 +1,408 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Authenticated user profile and preferred market session settings.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID matching the document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "preferredSession": {
+          "type": "string",
+          "enum": ["morning", "evening"],
+          "description": "Preferred market session view."
+        },
+        "preferredTheme": {
+          "type": "string",
+          "enum": ["light", "dark"],
+          "description": "UI theme preference."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was last updated."
+        }
+      },
+      "required": ["uid", "displayName", "preferredSession", "preferredTheme", "createdAt", "updatedAt"]
+    },
+    "CustomMarketRate": {
+      "title": "Custom Market Rate",
+      "description": "User-customized open market price for a township or local market.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "assetType": {
+          "type": "string",
+          "enum": ["gold", "currency", "commodity"],
+          "description": "Category of the market asset."
+        },
+        "assetId": {
+          "type": "string",
+          "description": "Identifier of the gold, currency, or commodity item.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "assetName": {
+          "type": "string",
+          "description": "Localized name of the market asset.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "customRate": {
+          "type": "number",
+          "description": "User-entered open market rate in MMK."
+        },
+        "session": {
+          "type": "string",
+          "enum": ["morning", "evening"],
+          "description": "Session associated with this rate."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["userId", "assetType", "assetId", "assetName", "customRate", "session", "createdAt", "updatedAt"]
+    },
+    "PriceAlertRule": {
+      "title": "Price Alert Rule",
+      "description": "User-configured price volatility alert threshold.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "itemKey": {
+          "type": "string",
+          "description": "Asset key such as USD, THB, gold-24k.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "itemName": {
+          "type": "string",
+          "description": "Localized asset name.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "targetHigh": {
+          "type": "number",
+          "description": "Upper price alert threshold in MMK."
+        },
+        "targetLow": {
+          "type": "number",
+          "description": "Lower price alert threshold in MMK."
+        },
+        "alertType": {
+          "type": "string",
+          "enum": ["above", "below"],
+          "description": "Direction of threshold trigger."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["userId", "itemKey", "itemName", "targetHigh", "targetLow", "alertType", "createdAt", "updatedAt"]
+    },
+    "BasketQuantity": {
+      "title": "Household Basket Quantity",
+      "description": "Persisted monthly quantity for a household inflation basket item.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "itemId": {
+          "type": "string",
+          "description": "Basket item identifier.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Monthly unit quantity."
+        },
+        "familySize": {
+          "type": "integer",
+          "description": "Household size preset."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["userId", "itemId", "quantity", "familySize", "createdAt", "updatedAt"]
+    },
+    "SavedDigestRecord": {
+      "title": "Saved Market Digest",
+      "description": "Saved morning/evening AI economic digest and Workspace export log.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "description": "Localized date string.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "session": {
+          "type": "string",
+          "enum": ["morning", "evening"],
+          "description": "Market session."
+        },
+        "headlineMm": {
+          "type": "string",
+          "description": "Burmese digest headline.",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "headlineEn": {
+          "type": "string",
+          "description": "English digest headline.",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "spreadAnalysisMm": {
+          "type": "string",
+          "description": "Spread gap commentary.",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "marketSentiment": {
+          "type": "string",
+          "enum": ["Volatile", "Stable", "Climbing", "Subdued"],
+          "description": "Market sentiment tag."
+        },
+        "keyPointsMm": {
+          "type": "array",
+          "description": "Key bullet points (bounded up to 8 items)."
+        },
+        "workspaceUrl": {
+          "type": "string",
+          "description": "Optional Google Sheets or Slides link if exported.",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["userId", "date", "session", "headlineMm", "headlineEn", "spreadAnalysisMm", "marketSentiment", "keyPointsMm", "createdAt", "updatedAt"]
+    },
+    "AiUsageLedger": {
+      "title": "AI Quota & Usage Ledger",
+      "description": "Daily per-user counter for AI digest synthesis and Google Search Grounding requests.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "Yangon calendar date key (YYYY-MM-DD).",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "digestCalls": {
+          "type": "integer",
+          "description": "Number of AI digest calls used on this date."
+        },
+        "searchCalls": {
+          "type": "integer",
+          "description": "Number of Google Search grounding calls used on this date."
+        },
+        "lastActionType": {
+          "type": "string",
+          "enum": ["digest", "search_grounding", "market_sync", "shops_sync", "news_refresh"],
+          "description": "Most recent AI or search action."
+        },
+        "lastModelUsed": {
+          "type": "string",
+          "description": "Model identifier used for the latest call.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["userId", "dateKey", "digestCalls", "searchCalls", "lastActionType", "lastModelUsed", "createdAt", "updatedAt"]
+    },
+    "TownshipMarketReport": {
+      "title": "Township Market Report",
+      "description": "Signed-in community market report for a specific Myanmar township and asset.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Reporter Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reporterLabel": {
+          "type": "string",
+          "description": "Non-PII display label for the contributor.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "township": {
+          "type": "string",
+          "description": "Myanmar city or township label.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "assetType": {
+          "type": "string",
+          "enum": ["gold", "currency", "commodity"],
+          "description": "Category of the reported asset."
+        },
+        "assetId": {
+          "type": "string",
+          "description": "Standardized asset identifier (e.g. USD, gold-24k, fuel-92).",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "reportedRate": {
+          "type": "number",
+          "description": "Reported street/retail rate in MMK within asset-specific bounds."
+        },
+        "session": {
+          "type": "string",
+          "enum": ["morning", "evening"],
+          "description": "Yangon market session for this report."
+        },
+        "parityCheckStatus": {
+          "type": "string",
+          "enum": ["aligned", "premium", "flagged"],
+          "description": "Validation status relative to XAU parity or benchmark median."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "userId",
+        "reporterLabel",
+        "township",
+        "assetType",
+        "assetId",
+        "reportedRate",
+        "session",
+        "parityCheckStatus",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile and dashboard preferences."
+    },
+    "/users/{userId}/customRates/{rateId}": {
+      "schema": { "$ref": "#/entities/CustomMarketRate" },
+      "description": "User's customized open market rates per asset."
+    },
+    "/users/{userId}/priceAlerts/{alertId}": {
+      "schema": { "$ref": "#/entities/PriceAlertRule" },
+      "description": "User's saved volatility alert thresholds."
+    },
+    "/users/{userId}/basketQuantities/{itemId}": {
+      "schema": { "$ref": "#/entities/BasketQuantity" },
+      "description": "User's household inflation basket item quantities."
+    },
+    "/users/{userId}/savedDigests/{digestId}": {
+      "schema": { "$ref": "#/entities/SavedDigestRecord" },
+      "description": "Archived daily AI market digests and Workspace export links."
+    },
+    "/users/{userId}/aiUsage/{dateKey}": {
+      "schema": { "$ref": "#/entities/AiUsageLedger" },
+      "description": "Daily per-user AI and Google Search grounding usage ledger."
+    },
+    "/townshipReports/{reportId}": {
+      "schema": { "$ref": "#/entities/TownshipMarketReport" },
+      "description": "Shared signed-in community township market rate consensus reports (no PII)."
+    }
+  }
+}
